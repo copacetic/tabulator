@@ -13,7 +13,7 @@ def add_product(prod_id, desc, size, price):
 
 def add_user(user_id, id_type, user_name):
     f = open(DB_NAME, 'a')
-    f.write(str(USER_RECORD) + user_id + DELIM + str(id_type) + DELIM + user_name + '\n')
+    f.write(str(USER_RECORD) + DELIM + str(user_id) + DELIM + str(id_type) + DELIM + user_name + '\n')
     f.close()
 
 def get_record(record_type, record_id):
