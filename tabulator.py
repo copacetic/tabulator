@@ -7,9 +7,12 @@ import time
 import threading
 
 import curses
+import simple_text_db as db
 
-IDLE, PRIMED, USED, PRICE_CHECK = range(4)
-stateStr = [ "IDLE", "PRIMED", "USED", "PRICE_CHECK" ]
+from tab import Tab
+
+IDLE, PRIMED, USED, PRICE_CHECK, CHECKOUT = range(5)
+stateStr = [ "IDLE", "PRIMED", "USED", "PRICE_CHECK", "CHECKOUT" ]
 RFID, BARCODE = range(2)
 
 undo_card = 1253887727
@@ -21,35 +24,42 @@ def RFIDThread(s):
     if rfid != None:
       TransactionState.lock.acquire()
       if s.state == IDLE:
-        s.startTransaction(rfid, RFID)
+        record = db.get_record(1, str(rfid))
+        if record != None:
+          s.startTransaction(rfid, RFID, record[-1])
       elif s.state == PRIMED:
         if rfid == s.ID and s.Type == RFID:
           s.reset()
         elif rfid == undo_card:
           s.reset()
         else:
-          s.startTransaction(rfid, RFID)
+          record = db.get_record(1, str(rfid))
+          if record != None:
+            s.startTransaction(rfid, RFID, record[-1])
       elif s.state == USED:
         if rfid == s.ID and s.Type == RFID:
           s.checkout()
+          TransactionState.lock.release()
+          time.sleep(3)
+          TransactionState.lock.acquire()
+          s.reset()
         elif rfid == undo_card:
           s.undo()
         else:
-          s.startTransaction(rfid, RFID)
+          record = db.get_record(1, str(rfid))
+          if record != None:
+            s.startTransaction(rfid, RFID, record[-1])
       TransactionState.lock.release()
       time.sleep(1)
 
 def BarcodeThread(s, mainwin):
   while True:
     code = barcode.scan(mainwin)
+    record = db.get_record(1, code)
     TransactionState.lock.acquire()
     if s.state == IDLE:
-      #record = db.get_record(1, code)
-      record = None
-      if int(code) == 23102492:
-        record = (BARCODE, 'Zachary Bush')
       if record != None:
-        s.startTransaction(code, BARCODE)
+        s.startTransaction(code, BARCODE, record[-1])
       else: 
         s.priceCheck(upc.lookup(code))
         TransactionState.lock.release()
@@ -59,11 +69,19 @@ def BarcodeThread(s, mainwin):
     elif s.state == PRIMED:
       if code == s.ID and s.Type == BARCODE:
         s.reset()
+      elif record != None:
+        s.startTransaction(code, BARCODE, record[-1])
       else:
         s.addTransaction(upc.lookup(code))
     elif s.state == USED:
       if code == s.ID and s.Type == BARCODE:
         s.checkout()
+        TransactionState.lock.release()
+        time.sleep(3)
+        TransactionState.lock.acquire()
+        s.reset()
+      elif record != None:
+        s.startTransaction(code, BARCODE, record[-1])
       else:
         s.addTransaction(upc.lookup(code))
     TransactionState.lock.release()
@@ -75,25 +93,32 @@ class TransactionState:
     self.state = initialState
     self.ID = None
     self.Type = None
+    self.uname = None
     self.stack = []
 
-  def startTransaction(self, ID, Type):
+  def startTransaction(self, ID, Type, uname):
     self.state = PRIMED
     self.ID = ID
     self.Type = Type
     self.stack = []
+    self.uname = uname
 
   def reset(self):
     self.state = IDLE
     self.ID = None
     self.Type = None
+    self.uname = None
 
   def addTransaction(self, transaction):
     self.stack.append(transaction)
     self.state = USED
 
   def checkout(self):
-    self.reset()
+    total = 0
+    self.state = CHECKOUT
+    for item in self.stack:
+      total += float(item['price'])
+    Tab(self.uname).addTo(total)
 
   def undo(self):
     self.stack.pop()
@@ -177,15 +202,16 @@ def graphics(stdscr, state):
   mainWin = curses.newwin(height - 11, 0, 10, 0)
   statusBar = curses.newwin(1, 0, height - 1, 0)
 
-  topWin.border()
-  startrow = 1
-  for row in csua_rows:
-    startix = int(width / 2 - (len(row) / 2))
-    topWin.addstr(startrow, startix, row)
-    startrow += 1
-  topWin.refresh()
 
   while r.isAlive() and b.isAlive():
+    topWin.erase()
+    startrow = 1
+    for row in csua_rows:
+      startix = int(width / 2 - (len(row) / 2))
+      topWin.addstr(startrow, startix, row)
+      startrow += 1
+    topWin.refresh()
+
     TransactionState.lock.acquire()
     statusBar.erase()
     statusBar.addstr(0, 0, str(state))
@@ -216,13 +242,55 @@ def graphics(stdscr, state):
       rightWin.refresh()
       rightWin.refresh()
     elif state.state == PRICE_CHECK:
+      mainWin.erase()
       mainWin.border()
 
-      mainWin.addstr(1, 1, str(state.pc_data))
+      data = state.pc_data
+
+      price = data['price']
+      description = data['description']
+
+      mainWin.addstr(1, 1, description + (" - $%03.2f" % float(price)))
 
       mainWin.refresh()
-    else:
+    elif state.state == PRIMED:
+      mainWin.erase()
       mainWin.border()
+
+      mainWin.addstr(1, 1, "Welcome %s" % state.uname)
+      t = "Your tab is currently: $%03.2f" % Tab(state.uname).value()
+      mainWin.addstr(1, width - 1 - len(t), t)
+
+      mainWin.addstr(height-13, 1, "Please scan your first item")
+
+      mainWin.refresh()
+    elif state.state == USED:
+      mainWin.erase()
+      mainWin.border()
+
+      mainWin.addstr(1, 1, "Welcome %s" % state.uname)
+      t = "Your tab is currently: $%03.2f" % Tab(state.uname).value()
+      mainWin.addstr(1, width - 1 - len(t), t)
+      
+      row = 3
+
+      total = 0
+      for item in state.stack:
+        price = float(item['price'])
+        total += price
+        description = item['description']
+
+        mainWin.addstr(row, 1, description + (" - $%03.2f" % price))
+
+        row += 1
+
+      mainWin.addstr(row+1, 1, "Total: $%03.2f" % total)
+      mainWin.refresh()
+    else:
+      mainWin.erase()
+      mainWin.border()
+
+      mainWin.addstr(1, 1, "Thank you %s. Your tab is now $%03.2f" % (state.uname, Tab(state.uname).value()))
       mainWin.refresh()
     TransactionState.lock.release()
     time.sleep(.5)

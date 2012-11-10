@@ -22,20 +22,7 @@ def lookup(upc):
         itemsOfInterest.append(('price', values[2]))
         return dict(itemsOfInterest)
 
-    if upc == SPRITE_UPC:
-        res = google_guesser.guess(upc)
-        if res == None:
-            return None
-        itemsOfInterest.append(('description', res))
-        itemsOfInterest.append(('status', 'success'))
-        itemsOfInterest.append(('found', True))
-        itemsOfInterest.append(('price', 0))
-        itemsOfInterest.append(('size','Not found'))
-        answer = dict(itemsOfInterest)
-        simple_text_db.add_product(upc, answer['description'], answer['size'],
-                answer['price'])
-        return dict(itemsOfInterest)
-    else:
+    if upc != SPRITE_UPC:
         s = ServerProxy('http://www.upcdatabase.com/xmlrpc')
         params = { 'rpc_key': RPC_KEY, 'upc': upc }
         upc_data = s.lookup(params)
@@ -53,5 +40,17 @@ def lookup(upc):
             simple_text_db.add_product(upc, itemsOfInterest['description'],
                     itemsOfInterest['size'], itemsOfInterest['price'])
             return itemsOfInterest
-        else:
+        elif upc_data['status'] != "success":
             return upc_data
+    res = google_guesser.guess(upc)
+    if res == None:
+        return None
+    itemsOfInterest.append(('description', res))
+    itemsOfInterest.append(('status', 'success'))
+    itemsOfInterest.append(('found', True))
+    itemsOfInterest.append(('price', 0))
+    itemsOfInterest.append(('size','Not found'))
+    answer = dict(itemsOfInterest)
+    simple_text_db.add_product(upc, answer['description'], answer['size'],
+            answer['price'])
+    return dict(itemsOfInterest)
