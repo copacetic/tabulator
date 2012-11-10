@@ -15,12 +15,11 @@ def lookup(upc):
     values = simple_text_db.get_record(0,upc)
     itemsOfInterest = []
     if values != None:
-        print("Found it in db.")
         itemsOfInterest.append(('description', values[0]))
         itemsOfInterest.append(('status', 'success'))
         itemsOfInterest.append(('found', True))
         itemsOfInterest.append(('size', values[1]))
-        itemsOfInterest.append(('prize', values[2]))
+        itemsOfInterest.append(('price', values[2]))
         return dict(itemsOfInterest)
 
     if upc == SPRITE_UPC:

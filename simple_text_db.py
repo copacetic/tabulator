@@ -22,18 +22,16 @@ def get_record(record_type, record_id):
     except IOError:
         return None
     lines = list(f.readlines())
-    print(lines)
     users = {}
     products = {}
     for line in lines:
+        line = line[:-1]
         rec = line.split(DELIM)
-        print(rec)
         without_rec_type = rec[1:]
         if rec[0] == str(PRODUCT_RECORD):
             products[without_rec_type[0]] = without_rec_type[1:]
         else:
             users[without_rec_type[0]] = without_rec_type[1:]
-    print(products) 
     f.close()
     if record_type == PRODUCT_RECORD:
         if record_id in products:
