@@ -13,7 +13,7 @@ def upc_lookup(upc):
     return s.lookup(params)
 
 if __name__=='__main__':
-	if len(sys.argv) != 2:
+        if len(sys.argv) != 2:
             print('Usage: fetchupc.py <upc>')
             exit
         else:
