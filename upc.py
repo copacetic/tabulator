@@ -4,6 +4,7 @@
 import sys
 from xmlrpc.client import ServerProxy, Error
 import google_guesser
+import simple_text_db
 
 SPRITE_UPC = "049000001327"
 RPC_KEY = 'dd32f3999b03b5b3db78b3a75c7e3f91f256d9bb'
@@ -11,7 +12,17 @@ RPC_KEY = 'dd32f3999b03b5b3db78b3a75c7e3f91f256d9bb'
 def lookup(upc):
     #For demo purposes only we have a special check here to see if it is
     #sprite. If it is, we use google scraping to guess.
+    values = simple_text_db.get_record(0,upc)
     itemsOfInterest = []
+    if values != None:
+        print("Found it in db.")
+        itemsOfInterest.append(('description', values[0]))
+        itemsOfInterest.append(('status', 'success'))
+        itemsOfInterest.append(('found', True))
+        itemsOfInterest.append(('size', values[1]))
+        itemsOfInterest.append(('prize', values[2]))
+        return dict(itemsOfInterest)
+
     if upc == SPRITE_UPC:
         res = google_guesser.guess(upc)
         if res == None:
@@ -20,7 +31,10 @@ def lookup(upc):
         itemsOfInterest.append(('status', 'success'))
         itemsOfInterest.append(('found', True))
         itemsOfInterest.append(('price', 0))
-        itemsOfInterest.append(('size',''))
+        itemsOfInterest.append(('size','Not found'))
+        answer = dict(itemsOfInterest)
+        simple_text_db.add_product(upc, answer['description'], answer['size'],
+                answer['price'])
         return dict(itemsOfInterest)
     else:
         s = ServerProxy('http://www.upcdatabase.com/xmlrpc')
@@ -37,6 +51,8 @@ def lookup(upc):
             itemsOfInterest.append(('found', upc_data['found']))
             itemsOfInterest = dict(itemsOfInterest)
             itemsOfInterest['price'] = 0 #get price from database here
+            simple_text_db.add_product(upc, itemsOfInterest['description'],
+                    itemsOfInterest['size'], itemsOfInterest['price'])
             return itemsOfInterest
         else:
             return upc_data
