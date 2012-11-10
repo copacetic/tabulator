@@ -1,7 +1,7 @@
 import sys
 from ctypes import *
 
-def getRFID():
+def getRFID(timeout):
   libnfc = cdll.LoadLibrary("./libnfc-1.6.0-rc1/libnfc/.libs/libnfc.so")
 
   NMT_ISO14443A     = c_int(1)
@@ -93,7 +93,7 @@ def getRFID():
     _fields_ = [("nti", nfc_target_info),
                 ("nm", nfc_modulation)]
 
-  uiPollNr = c_uint8(20)
+  uiPollNr = c_uint8(timeout)
   uiPeriod = c_uint8(2)
   szModulations = c_size_t(1)
   nmModulations = (nfc_modulation * 5)()
@@ -133,6 +133,6 @@ def getRFID():
 
     retval = 0
     for i in range(a.szUidLen):
-      retval <<= 1
+      retval <<= 8
       retval |= a.abtUid[i]
     return retval
