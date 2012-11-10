@@ -116,7 +116,10 @@ class TransactionState:
   def checkout(self):
     total = 0
     self.state = CHECKOUT
+    f = open('.tabulator.log', 'a')
     for item in self.stack:
+      f.write("%s,%s,%s,%s\n" % (time.ctime(), self.uname,
+                                 self.ID,item['description']))
       total += float(item['price'])
     Tab(self.uname).addTo(total)
 
