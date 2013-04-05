@@ -17,7 +17,6 @@ RFID, BARCODE = range(2)
 
 undo_card = 1253887727
 
-
 def RFIDThread(s):
   while True:
     rfid = nfc.getRFID(300)
@@ -110,7 +109,15 @@ class TransactionState:
     self.uname = None
 
   def addTransaction(self, transaction):
-    self.stack.append(transaction)
+    hasNone = False
+    if len(self.stack) > 0 and self.stack[-1] == None:
+      hasNone = True
+    if transaction != None:
+      if hasNone:
+        self.stack.pop()
+      self.stack.append(transaction)
+    elif not hasNone:
+      self.stack.append(None)
     self.state = USED
 
   def checkout(self):
@@ -118,9 +125,10 @@ class TransactionState:
     self.state = CHECKOUT
     f = open('.tabulator.log', 'a')
     for item in self.stack:
-      f.write("%s,%s,%s,%s\n" % (time.ctime(), self.uname,
-                                 self.ID,item['description']))
-      total += float(item['price'])
+      if item != None:
+        f.write("%s,%s,%s,%s\n" % (time.ctime(), self.uname,
+                                   self.ID,item['description']))
+        total += float(item['price'])
     Tab(self.uname).addTo(total)
 
   def undo(self):
@@ -250,10 +258,13 @@ def graphics(stdscr, state):
 
       data = state.pc_data
 
-      price = data['price']
-      description = data['description']
+      if data != None and 'price' in data and 'description' in data:
+        price = data['price']
+        description = data['description']
 
-      mainWin.addstr(1, 1, description + (" - $%03.2f" % float(price)))
+        mainWin.addstr(1, 1, description + (" - $%03.2f" % float(price)))
+      else:
+        mainWin.addstr(1, 1, "Item not found")
 
       mainWin.refresh()
     elif state.state == PRIMED:
@@ -279,11 +290,14 @@ def graphics(stdscr, state):
 
       total = 0
       for item in state.stack:
-        price = float(item['price'])
-        total += price
-        description = item['description']
+        if item != None and 'price' in item and 'description' in item:
+          price = float(item['price'])
+          total += price
+          description = item['description']
 
-        mainWin.addstr(row, 1, description + (" - $%03.2f" % price))
+          mainWin.addstr(row, 1, description + (" - $%03.2f" % price))
+        else:
+          mainWin.addstr(row, 1, "Item not found")
 
         row += 1
 

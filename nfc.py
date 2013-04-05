@@ -23,11 +23,11 @@ def getRFID(timeout):
   NDM_PASSIVE = c_int(1)
   NDM_ACTIVE = c_int(2)
 
-  class nfc_modulation(Structure):
+  class nfc_modulation(LittleEndianStructure):
     _fields_ = [("nmt", c_int),
                 ("nbr", c_int)]
 
-  class nfc_dep_info(Structure):
+  class nfc_dep_info(LittleEndianStructure):
     _fields_ = [("abtNFCID3", c_uint8 * 10),
                 ("btDID", c_uint8),
                 ("btBS", c_uint8),
@@ -47,35 +47,35 @@ def getRFID(timeout):
                 ("szAtsLen", c_size_t),
                 ("abtAts", c_uint8 * 254)]
 
-  class nfc_felica_info(Structure):
+  class nfc_felica_info(LittleEndianStructure):
     _fields_ = [("szLen", c_size_t),
                 ("btResCode", c_uint8),
                 ("abtId", c_uint8 * 8),
                 ("abtPad", c_uint8 * 8),
                 ("abtSysCode", c_uint8 * 2)]
 
-  class nfc_iso14443b_info(Structure):
+  class nfc_iso14443b_info(LittleEndianStructure):
     _fields_ = [("abtPupi", c_uint8 * 4),
                 ("abtApplicationData", c_uint8 * 4),
                 ("abtProtocolInfo", c_uint8 * 3),
                 ("ui8CardIdentifier", c_uint8)]
 
-  class nfc_iso14443bi_info(Structure):
+  class nfc_iso14443bi_info(LittleEndianStructure):
     _fields_ = [("abtDIV", c_uint8 * 4),
                 ("btVerLog", c_uint8),
                 ("btConfig", c_uint8),
                 ("szAtrLen", c_size_t),
                 ("abtAtr", c_uint8 * 33)]
 
-  class nfc_iso14443b2sr_info(Structure):
+  class nfc_iso14443b2sr_info(LittleEndianStructure):
     _fields_ = [("abtUID", c_uint8 * 8)]
 
-  class nfc_iso14443b2ct_info(Structure):
+  class nfc_iso14443b2ct_info(LittleEndianStructure):
     _fields_ = [("abtUID", c_uint8 * 4),
                 ("btProdCode", c_uint8),
                 ("btFabCode", c_uint8)]
 
-  class nfc_jewel_info(Structure):
+  class nfc_jewel_info(LittleEndianStructure):
     _fields_ = [("btSensRes", c_uint8 * 2),
                 ("btId", c_uint8 * 4)]
 
@@ -89,7 +89,7 @@ def getRFID(timeout):
                 ("nji", nfc_jewel_info),
                 ("ndi", nfc_dep_info)]
 
-  class nfc_target(Structure):
+  class nfc_target(LittleEndianStructure):
     _fields_ = [("nti", nfc_target_info),
                 ("nm", nfc_modulation)]
 
@@ -100,7 +100,7 @@ def getRFID(timeout):
 
   nmModulations[0].nmt = NMT_ISO14443A
   nmModulations[0].nbr = NBR_106
-  '''
+  
   nmModulations[1].nmt = NMT_ISO14443B
   nmModulations[1].nbr = NBR_106
 
@@ -112,7 +112,7 @@ def getRFID(timeout):
 
   nmModulations[4].nmt = NMT_JEWEL
   nmModulations[4].nbr = NBR_106
-  '''
+
   nt = nfc_target()
 
   libnfc.nfc_init(0)
@@ -120,9 +120,11 @@ def getRFID(timeout):
   pnd = libnfc.nfc_open(0, 0)
 
   if pnd == 0:
+    print("PND IS 0")
     return None
 
   if libnfc.nfc_initiator_init(pnd) < 0:
+    print("INITIATOR RETURNED less than 0")
     return None
 
   res = libnfc.nfc_initiator_poll_target (pnd, nmModulations, szModulations,
