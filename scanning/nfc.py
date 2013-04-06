@@ -2,7 +2,7 @@ import sys
 from ctypes import *
 
 def getRFID(timeout):
-  libnfc = cdll.LoadLibrary("./libnfc-1.6.0-rc1/libnfc/.libs/libnfc.so")
+  libnfc = cdll.LoadLibrary("./scanning/libnfc-1.6.0-rc1/libnfc/.libs/libnfc.so")
 
   NMT_ISO14443A     = c_int(1)
   NMT_JEWEL         = c_int(2)
@@ -120,11 +120,9 @@ def getRFID(timeout):
   pnd = libnfc.nfc_open(0, 0)
 
   if pnd == 0:
-    print("PND IS 0")
     return None
 
   if libnfc.nfc_initiator_init(pnd) < 0:
-    print("INITIATOR RETURNED less than 0")
     return None
 
   res = libnfc.nfc_initiator_poll_target (pnd, nmModulations, szModulations,

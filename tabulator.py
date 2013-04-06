@@ -1,15 +1,16 @@
-import nfc
-import barcode
-import upc
+from scanning import nfc
+from scanning import barcode
+
+from search import upc
 
 import os
 import time
 import threading
 
 import curses
-import simple_text_db as db
 
-from tab import Tab
+from data import simple_text_db as db
+from data.tab import Tab
 
 IDLE, PRIMED, USED, PRICE_CHECK, CHECKOUT = range(5)
 stateStr = [ "IDLE", "PRIMED", "USED", "PRICE_CHECK", "CHECKOUT" ]
