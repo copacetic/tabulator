@@ -1,0 +1,5 @@
+db.tab
+*.pyc
+__pycache__
+tabulator_db.txt
+.tabulator.log
